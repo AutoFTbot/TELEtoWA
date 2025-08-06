@@ -208,9 +208,7 @@ Jika Anda menemukan kerentanan keamanan, silakan laporkan secara privat ke secur
 
 ## 📞 Support
 
-- 📧 Email: support@teletoWA.com
-- 💬 WhatsApp: +62 812-3456-7890
-- 📱 Telegram: @TELEtoWA_support
+- 📱 Telegram: @AutoFtBot69
 
 ## ⭐ Star History
 
