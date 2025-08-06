@@ -27,7 +27,7 @@ const SESSION_DELAY = 3000; // 3 detik
  */
 function displaySessionString(sessionString) {
   console.log("\n🎉 Session String berhasil dibuat!");
-  console.log("📋 Copy string di bawah ini ke file telegram.js:");
+  console.log("📋 Copy string di bawah ini ke file whatsapp-simple.js:");
   console.log("=".repeat(50));
   console.log(sessionString);
   console.log("=".repeat(50));
