@@ -32,7 +32,7 @@
 
 ### Persyaratan
 
-- Node.js 16+ terinstall
+- Node.js 16+ terinstall saran v20.19.4
 - Akun Telegram
 - Akun WhatsApp
 - Kredensial API Telegram (dapatkan dari [my.telegram.org](https://my.telegram.org))
