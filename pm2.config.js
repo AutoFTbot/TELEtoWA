@@ -38,10 +38,40 @@ module.exports = {
     // KONFIGURASI RESTART DAN UPTIME
     // ============================================================================
     // Restart jika crash
-    max_restarts: 10,
-    min_uptime: '10s',
+    max_restarts: 15,
+    min_uptime: '30s',
     
-    // Auto restart setiap 24 jam untuk mencegah memory leak
-    cron_restart: '0 2 * * *'
+    // Restart strategy untuk menangani error WhatsApp
+    restart_delay: 5000,
+    
+    // Auto restart setiap 12 jam untuk mencegah memory leak dan session issues
+    cron_restart: '0 */12 * * *',
+    
+    // ============================================================================
+    // KONFIGURASI MONITORING
+    // ============================================================================
+    // Kill timeout jika aplikasi tidak merespons
+    kill_timeout: 10000,
+    
+    // Wait ready untuk memastikan aplikasi sudah siap
+    wait_ready: true,
+    listen_timeout: 30000,
+    
+    // ============================================================================
+    // KONFIGURASI ERROR HANDLING
+    // ============================================================================
+    // Restart jika ada error yang spesifik
+    exp_backoff_restart_delay: 100,
+    
+    // ============================================================================
+    // KONFIGURASI PERFORMANCE
+    // ============================================================================
+    node_args: '--max-old-space-size=1024',
+    
+    // ============================================================================
+    // KONFIGURASI NOTIFICATION (OPSIONAL)
+    // ============================================================================
+    // Uncomment jika ingin notifikasi saat restart
+    // notify: true
   }]
 }

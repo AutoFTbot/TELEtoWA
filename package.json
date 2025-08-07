@@ -1,6 +1,6 @@
 {
   "name": "teletoWA",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Bridge aplikasi untuk meneruskan pesan dari Telegram ke WhatsApp dengan fitur auto-reply dan media support",
   "main": "whatsapp-simple.js",
   "keywords": [
@@ -35,6 +35,11 @@
     "pm2-restart": "pm2 restart TELEtoWA",
     "pm2-logs": "pm2 logs TELEtoWA",
     "pm2-status": "pm2 status",
+    "wa-restart": "node restart-whatsapp.js --all",
+    "wa-clean": "node restart-whatsapp.js --clean",
+    "wa-logs": "node restart-whatsapp.js --logs",
+    "wa-restart-only": "node restart-whatsapp.js --restart",
+    "test-connection": "node test-connection.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {

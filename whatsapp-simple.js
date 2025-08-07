@@ -1,7 +1,8 @@
 const {
   makeWASocket,
   useMultiFileAuthState,
-  fetchLatestBaileysVersion
+  fetchLatestBaileysVersion,
+  makeCacheableSignalKeyStore
 } = require('@whiskeysockets/baileys')
 const pino = require('pino')
 const { recipientNumber, ignoredUsernames, adminWaNumber, offlineMode } = require('./config')
@@ -16,6 +17,13 @@ const { apiId, apiHash } = require("./config");
 // Simpan user terakhir untuk auto-reply
 let lastUserId = null;
 let lastUsername = null;
+
+// Variabel untuk retry mechanism
+let sock = null;
+let isReconnecting = false;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 10;
+const RECONNECT_DELAY = 5000; // 5 detik
 
 // ============================================================================
 // FUNGSI UTILITAS
@@ -118,6 +126,108 @@ async function getMediaInfo(msg, telegramClient) {
   return { mediaIcon, mediaInfo, mediaBuffer, mediaType };
 }
 
+/**
+ * Delay function untuk retry
+ * @param {number} ms - Milliseconds to delay
+ * @returns {Promise} - Promise that resolves after delay
+ */
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Inisialisasi WhatsApp socket dengan retry mechanism
+ * @returns {Promise<Object>} - WhatsApp socket instance
+ */
+async function initializeWhatsAppSocket() {
+  try {
+    console.log('🔄 Initializing WhatsApp connection...');
+    
+    const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
+    const { version } = await fetchLatestBaileysVersion();
+
+         const newSock = makeWASocket({
+       version,
+       logger: pino({ level: 'silent' }),
+       connectTimeoutMs: 60_000,
+       keepAliveIntervalMs: 30_000,
+       retryRequestDelayMs: 2000,
+       maxRetries: 5,
+       // Tambahan konfigurasi untuk stabilitas
+       browser: ['TELEtoWA', 'Chrome', '1.0.0'],
+       printQRInTerminal: false,
+       shouldIgnoreJid: jid => jid.includes('@broadcast'),
+       // Tambahan untuk handling session
+       markOnlineOnConnect: false,
+       syncFullHistory: false,
+       fireInitQueries: true,
+       auth: {
+         creds: state.creds,
+         keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'fatal' }).child({ level: 'fatal' })),
+       },
+     });
+
+    newSock.ev.on('creds.update', saveCreds);
+    
+    return newSock;
+  } catch (error) {
+    console.error('❌ Error initializing WhatsApp socket:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Reconnect WhatsApp dengan retry mechanism
+ */
+async function reconnectWhatsApp() {
+  if (isReconnecting) {
+    console.log('🔄 Reconnection already in progress...');
+    return;
+  }
+
+  isReconnecting = true;
+  reconnectAttempts++;
+
+  try {
+    console.log(`🔄 Attempting to reconnect WhatsApp (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
+    
+    // Tutup socket lama jika ada
+    if (sock) {
+      try {
+        await sock.logout();
+      } catch (error) {
+        console.log('⚠️ Error during logout:', error.message);
+      }
+    }
+
+    // Tunggu sebentar sebelum reconnect
+    await delay(RECONNECT_DELAY);
+
+    // Buat socket baru
+    sock = await initializeWhatsAppSocket();
+    
+    // Setup handler untuk socket baru
+    setupWhatsAppConnectionHandler(sock);
+    setupWhatsAppMessageHandler(sock);
+    
+    console.log('✅ WhatsApp reconnected successfully!');
+    reconnectAttempts = 0; // Reset counter jika berhasil
+    
+  } catch (error) {
+    console.error(`❌ Reconnection attempt ${reconnectAttempts} failed:`, error.message);
+    
+    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+      console.log(`🔄 Will retry in ${RECONNECT_DELAY/1000} seconds...`);
+      setTimeout(reconnectWhatsApp, RECONNECT_DELAY);
+    } else {
+      console.error('❌ Max reconnection attempts reached. Please restart the application.');
+      process.exit(1);
+    }
+  } finally {
+    isReconnecting = false;
+  }
+}
+
 // ============================================================================
 // SETUP CLIENT TELEGRAM
 // ============================================================================
@@ -153,9 +263,12 @@ function setupWhatsAppConnectionHandler(sock) {
       }
     } else if (connection === 'close') {
       const shouldReconnect = lastDisconnect?.error
+      console.log('🔌 WhatsApp connection closed');
+      
       if (shouldReconnect?.output?.statusCode !== 401) {
         console.log('🔄 WhatsApp disconnected, attempting to reconnect...')
-        // Koneksi akan otomatis mencoba reconnect
+        // Trigger reconnect
+        setTimeout(reconnectWhatsApp, 1000);
       } else {
         console.log('❌ WhatsApp authentication failed. Please run: npm run setup-wa')
         process.exit(1)
@@ -261,7 +374,7 @@ async function shouldSkipDueToOfflineMode() {
 }
 
 /**
- * Kirim notifikasi ke WhatsApp
+ * Kirim notifikasi ke WhatsApp dengan retry mechanism
  * @param {Object} sock - Instance socket WhatsApp
  * @param {string} notifText - Teks notifikasi
  * @param {Buffer} mediaBuffer - Buffer media
@@ -269,20 +382,46 @@ async function shouldSkipDueToOfflineMode() {
  * @param {string} mediaInfo - Info media
  */
 async function sendWhatsAppNotification(sock, notifText, mediaBuffer, mediaType, mediaInfo) {
-  try {
-    if (mediaBuffer && mediaType) {
-      const mediaMessage = {
-        [mediaType]: mediaBuffer,
-        caption: notifText
+  const maxRetries = 3;
+  let retryCount = 0;
+
+  while (retryCount < maxRetries) {
+    try {
+      if (!sock) {
+        throw new Error('WhatsApp socket not available');
       }
-      await sock.sendMessage(`${recipientNumber}@s.whatsapp.net`, mediaMessage)
-      console.log(`✅ Media ${mediaInfo} terkirim`)
-    } else {
-      await sock.sendMessage(`${recipientNumber}@s.whatsapp.net`, { text: notifText })
-      console.log(`✅ Notifikasi terkirim`)
+
+      if (mediaBuffer && mediaType) {
+        const mediaMessage = {
+          [mediaType]: mediaBuffer,
+          caption: notifText
+        }
+        await sock.sendMessage(`${recipientNumber}@s.whatsapp.net`, mediaMessage)
+        console.log(`✅ Media ${mediaInfo} terkirim`)
+      } else {
+        await sock.sendMessage(`${recipientNumber}@s.whatsapp.net`, { text: notifText })
+        console.log(`✅ Notifikasi terkirim`)
+      }
+      
+      // Jika berhasil, keluar dari loop
+      break;
+      
+    } catch (error) {
+      retryCount++;
+      console.error(`❌ Error kirim notifikasi (attempt ${retryCount}/${maxRetries}):`, error.message)
+      
+      if (error.message.includes('Connection Closed') || error.message.includes('Bad MAC')) {
+        console.log('🔄 Connection error detected, attempting to reconnect...');
+        await reconnectWhatsApp();
+        // Tunggu sebentar sebelum retry
+        await delay(2000);
+      } else if (retryCount < maxRetries) {
+        // Tunggu sebentar sebelum retry untuk error lain
+        await delay(1000);
+      } else {
+        console.error('❌ Max retry attempts reached for notification');
+      }
     }
-  } catch (error) {
-    console.error('❌ Error kirim notifikasi:', error.message)
   }
 }
 
@@ -334,7 +473,7 @@ function setupTelegramMessageHandler(sock) {
         const usernameText = username ? `https://t.me/${username}` : "Tidak ada username";
         const notifText = `📩 *Pesan baru dari Telegram!*\n\n👤 *Nama:* ${fullName}\n🔗 *Username:* ${usernameText}${mediaText}\n📝 *Pesan:* ${messageText || "(Media saja)"}`;
         
-        // Kirim notifikasi
+        // Kirim notifikasi dengan retry mechanism
         await sendWhatsAppNotification(sock, notifText, mediaBuffer, mediaType, mediaInfo);
         
       } catch (error) {
@@ -360,20 +499,7 @@ async function startSimpleReply() {
     console.log('✅ Telegram client ready!')
     
     // Mulai listener WhatsApp
-    const { state, saveCreds } = await useMultiFileAuthState('./auth_info')
-    const { version } = await fetchLatestBaileysVersion()
-
-    const sock = makeWASocket({
-      version,
-      logger: pino({ level: 'silent' }),
-      auth: state,
-      connectTimeoutMs: 60_000,
-      keepAliveIntervalMs: 30_000,
-      retryRequestDelayMs: 2000,
-      maxRetries: 5
-    })
-
-    sock.ev.on('creds.update', saveCreds)
+    sock = await initializeWhatsAppSocket();
 
     // Setup handler
     setupWhatsAppConnectionHandler(sock)
@@ -382,6 +508,8 @@ async function startSimpleReply() {
     
   } catch (error) {
     console.error('❌ Error:', error.message)
+    // Jika error saat startup, coba reconnect
+    setTimeout(reconnectWhatsApp, 5000);
   }
 }
 

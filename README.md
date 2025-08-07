@@ -19,6 +19,8 @@
 - ⚡ **Real-time** - Penerusan pesan instan
 - 🛡️ **Aman** - Menggunakan API resmi Telegram dan WhatsApp
 - 🔧 **Bisa Dikonfigurasi** - Mudah disesuaikan pengaturannya
+- 🛠️ **Auto Recovery** - Restart otomatis saat error koneksi
+- 📊 **Monitoring** - Logs dan status monitoring lengkap
 
 ## 🎯 Sempurna Untuk
 
@@ -156,16 +158,25 @@ Kirim pesan biasa di WhatsApp
 ## 📜 Script yang Tersedia
 
 ```bash
+# 🚀 Basic Commands
 npm start              # Jalankan aplikasi
 npm run setup-wa       # Setup WhatsApp (scan QR code)
 npm run get-session    # Generate session Telegram baru
+npm run help           # Tampilkan panduan
+
+# 🔧 PM2 Service Management
 npm run install-pm2    # Install sebagai service PM2
 npm run pm2-start      # Start service PM2
 npm run pm2-stop       # Stop service PM2
 npm run pm2-restart    # Restart service PM2
 npm run pm2-logs       # Lihat log PM2
 npm run pm2-status     # Cek status PM2
-npm run help           # Tampilkan panduan
+
+# 🛠️ WhatsApp Connection Management (NEW!)
+npm run wa-restart     # Restart lengkap (Clean + Restart PM2)
+npm run wa-clean       # Bersihkan session files
+npm run wa-logs        # Lihat error logs
+npm run wa-restart-only # Restart PM2 tanpa cleanup
 ```
 
 ## 🔧 Troubleshooting
@@ -180,13 +191,26 @@ npm run help           # Tampilkan panduan
 - Jalankan: `npm run get-session`
 - Update StringSession di `whatsapp-simple.js`
 
-**3. Tidak terima notifikasi**
+**3. Error "Bad MAC" atau "Connection Closed"** ⚡ **NEW!**
+- **Solusi cepat:** `npm run wa-restart`
+- Ini membersihkan session bermasalah dan restart otomatis
+- Lihat [Troubleshooting Guide](TROUBLESHOOTING.md) untuk detail lengkap
+
+**4. Tidak terima notifikasi**
 - Cek konfigurasi `recipientNumber`
 - Pastikan mode offline tidak aktif jika Anda online
 
-**4. Error koneksi**
+**5. Error koneksi**
 - Cek koneksi internet
-- Restart aplikasi: `npm run pm2-restart`
+- Restart aplikasi: `npm run wa-restart` (recommended) atau `npm run pm2-restart`
+
+### 🆕 Fitur Auto-Recovery
+- **Auto restart setiap 12 jam** untuk mencegah session issues
+- **Retry mechanism** untuk error koneksi
+- **Session cleanup otomatis** saat restart
+- **Monitoring logs** untuk debugging
+
+💡 **Tips:** Gunakan `npm run wa-restart` sebagai solusi pertama untuk masalah koneksi WhatsApp!
 
 ## 🤝 Kontribusi
 
