@@ -34,7 +34,7 @@
 
 ### Persyaratan
 
-- Node.js 16+ terinstall
+- Node.js 16+ terinstall saran v20.19.4
 - Akun Telegram
 - Akun WhatsApp
 - Kredensial API Telegram (dapatkan dari [my.telegram.org](https://my.telegram.org))
@@ -232,9 +232,7 @@ Jika Anda menemukan kerentanan keamanan, silakan laporkan secara privat ke secur
 
 ## 📞 Support
 
-- 📧 Email: support@teletoWA.com
-- 💬 WhatsApp: +62 812-3456-7890
-- 📱 Telegram: @TELEtoWA_support
+- 📱 Telegram: @AutoFtBot69
 
 ## ⭐ Star History
 
