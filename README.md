@@ -230,6 +230,13 @@ Proyek ini dilisensikan di bawah MIT License - lihat file [LICENSE](LICENSE) unt
 
 Jika Anda menemukan kerentanan keamanan, silakan laporkan secara privat ke security@teletoWA.com daripada membuat issue publik.
 
+## 📊 Project Diagrams
+
+Untuk visualisasi lengkap project TELEtoWA, lihat:
+- 🏗️ [Architecture Diagrams](docs/architecture-diagram.md) - Diagram arsitektur sistem
+- 🎨 [Visual Diagrams](docs/visual-diagrams.md) - Diagram visual ASCII art
+- 📈 [Mermaid Diagrams](docs/mermaid-diagrams.md) - Diagram interaktif Mermaid
+
 ## 📞 Support
 
 - 📱 Telegram: @AutoFtBot69
